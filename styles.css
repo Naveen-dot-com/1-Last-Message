@@ -123,6 +123,7 @@ body {
   pointer-events: none;
 }
 .liquid-blob {
+  top: 120px;
   width: 240px;
   height: 240px;
   background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(200,210,220,0.5));

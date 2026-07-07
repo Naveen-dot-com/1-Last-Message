@@ -126,11 +126,14 @@ const App = {
 
     // Settings
     document.getElementById('theme-selector').addEventListener('change', (e) => this.setTheme(e.target.value));
-    document.getElementById('signout-btn').addEventListener('click', () => {
+    
+    const doSignOut = () => {
       this.state.derivedKey = null;
       this.state.message = null;
       window.location.reload();
-    });
+    };
+    document.getElementById('signout-btn').addEventListener('click', doSignOut);
+    document.getElementById('dashboard-signout-btn').addEventListener('click', doSignOut);
     document.getElementById('factory-reset-btn').addEventListener('click', () => this.showModal("Factory Reset", "This will delete all encrypted data locally. Proceed?", () => this.factoryReset()));
     
     // Check-in
