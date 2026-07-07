@@ -67,6 +67,16 @@ body {
   width: 100vw;
 }
 
+.particles-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .screen {
   position: absolute;
   top: 0;
@@ -113,23 +123,25 @@ body {
   pointer-events: none;
 }
 .liquid-blob {
-  width: 180px;
-  height: 180px;
-  background: var(--glass-bg);
+  width: 240px;
+  height: 240px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(200,210,220,0.5));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
   box-shadow: 
     var(--glass-shadow), 
-    inset 20px 20px 40px rgba(255, 255, 255, 0.5), 
+    inset 20px 20px 40px rgba(255, 255, 255, 0.9), 
     inset -20px -20px 40px rgba(0, 0, 0, 0.1);
   position: relative;
   animation: morphBlob 8s ease-in-out infinite;
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   z-index: 10;
+  margin-bottom: 2rem;
 }
 
 body.theme-dark .liquid-blob {
+  background: var(--glass-bg);
   box-shadow: 
     var(--glass-shadow), 
     inset 20px 20px 40px rgba(255, 255, 255, 0.1), 

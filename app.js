@@ -1,7 +1,8 @@
 // App Controller
 const App = {
   state: {
-    message: { recipients: [], text: "", attachments: [], deliveryMode: "manual" }
+    message: { recipients: [], text: "", attachments: [], deliveryMode: "manual" },
+    particles: []
   },
 
   init: async function() {
@@ -9,6 +10,7 @@ const App = {
     await emailService.loadConfig(db);
     this.bindEvents();
     this.applyTheme();
+    this.initParticles();
     
     // Service Worker is disabled in Android WebView to prevent Chromium cache backend errors
     // as WebViewAssetLoader already serves files locally.
@@ -26,6 +28,52 @@ const App = {
       document.getElementById('passphrase-confirm-group').classList.add('hidden');
       document.getElementById('auth-btn').innerText = "Unlock";
     }
+  },
+
+  initParticles: function() {
+    const canvas = document.getElementById('particles-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const resize = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Create initial particles
+    this.state.particles = Array.from({ length: 40 }).map(() => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: Math.random() * 3 + 1,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        alpha: Math.random() * 0.5 + 0.1
+    }));
+
+    const animate = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const isDark = document.body.classList.contains('theme-dark');
+        const fillStyleStr = isDark ? '255, 255, 255' : '0, 0, 0';
+
+        this.state.particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+            if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${fillStyleStr}, ${p.alpha})`;
+            ctx.fill();
+        });
+
+        requestAnimationFrame(animate);
+    };
+    animate();
   },
 
   bindEvents: function() {
