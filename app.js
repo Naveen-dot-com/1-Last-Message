@@ -246,6 +246,15 @@ const App = {
   nav: function(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
+    
+    const canvas = document.getElementById('particles-canvas');
+    if (canvas) {
+        if (screenId === 'screen-editor' || screenId === 'screen-settings') {
+            canvas.style.display = 'none';
+        } else {
+            canvas.style.display = 'block';
+        }
+    }
   },
 
   showToast: function(msg) {
