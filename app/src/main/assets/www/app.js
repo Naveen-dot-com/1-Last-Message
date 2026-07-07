@@ -29,14 +29,24 @@ const App = {
   },
 
   bindEvents: function() {
-    document.getElementById('splash-droplet').addEventListener('click', () => this.nav('screen-auth'));
+    document.getElementById('splash-droplet').addEventListener('click', () => {
+        this.nav('screen-auth');
+        this.checkBiometricSupport();
+    });
     document.getElementById('auth-btn').addEventListener('click', () => this.handleAuth());
+    document.getElementById('biometric-auth-btn').addEventListener('click', () => this.handleBiometricAuth());
     document.getElementById('hero-send-btn').addEventListener('click', () => this.handleSend());
     document.getElementById('go-editor-btn').addEventListener('click', () => { this.loadEditor(); this.nav('screen-editor'); });
     document.getElementById('editor-back-btn').addEventListener('click', () => { this.saveMessage(false); this.nav('screen-dashboard'); });
     document.getElementById('editor-save-btn').addEventListener('click', () => this.saveMessage(true));
-    document.getElementById('go-settings-btn').addEventListener('click', () => this.nav('screen-settings'));
+    document.getElementById('go-settings-btn').addEventListener('click', () => {
+        this.updateBiometricSettingsUI();
+        this.nav('screen-settings');
+    });
     document.getElementById('settings-back-btn').addEventListener('click', () => this.nav('screen-dashboard'));
+
+    document.getElementById('enable-biometric-btn').addEventListener('click', () => this.enableBiometric());
+    document.getElementById('disable-biometric-btn').addEventListener('click', () => this.disableBiometric());
     
     // Auth password strength
     document.getElementById('passphrase-input').addEventListener('input', (e) => this.checkStrength(e.target.value));
@@ -68,11 +78,118 @@ const App = {
 
     // Settings
     document.getElementById('theme-selector').addEventListener('change', (e) => this.setTheme(e.target.value));
+    document.getElementById('signout-btn').addEventListener('click', () => {
+      this.state.derivedKey = null;
+      this.state.message = null;
+      window.location.reload();
+    });
     document.getElementById('factory-reset-btn').addEventListener('click', () => this.showModal("Factory Reset", "This will delete all encrypted data locally. Proceed?", () => this.factoryReset()));
     
     // Check-in
     document.getElementById('checkin-btn').addEventListener('click', () => this.handleCheckIn());
     document.getElementById('checkin-edit-btn').addEventListener('click', () => { this.loadEditor(); this.nav('screen-editor'); });
+  },
+
+  checkBiometricSupport: async function() {
+    if (!window.PublicKeyCredential) {
+        document.getElementById('biometric-settings-panel').classList.add('hidden');
+        return;
+    }
+    const hasCred = !!localStorage.getItem('biometric_cred_id');
+    const saltConfig = await db.get('settings', 'salt');
+    if (hasCred && saltConfig) {
+        document.getElementById('biometric-auth-btn').classList.remove('hidden');
+    }
+  },
+
+  updateBiometricSettingsUI: function() {
+    if (!window.PublicKeyCredential) {
+        document.getElementById('biometric-settings-panel').classList.add('hidden');
+        return;
+    }
+    const hasCred = !!localStorage.getItem('biometric_cred_id');
+    document.getElementById('enable-biometric-btn').classList.toggle('hidden', hasCred);
+    document.getElementById('disable-biometric-btn').classList.toggle('hidden', !hasCred);
+  },
+
+  enableBiometric: async function() {
+    try {
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        const userId = crypto.getRandomValues(new Uint8Array(16));
+        
+        const publicKey = {
+            challenge: challenge,
+            rp: { name: "One Last Message", id: window.location.hostname || "localhost" },
+            user: { id: userId, name: "owner", displayName: "Vault Owner" },
+            pubKeyCredParams: [ { type: "public-key", alg: -7 }, { type: "public-key", alg: -257 } ],
+            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+            timeout: 60000,
+            attestation: "none"
+        };
+        const cred = await navigator.credentials.create({ publicKey });
+        const credId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+        
+        localStorage.setItem('biometric_cred_id', credId);
+        // Note: Without PRF, we must store the passphrase in local storage obfuscated.
+        localStorage.setItem('biometric_key', btoa(this.state.derivedKeyPassphrase || document.getElementById('passphrase-input').value));
+        
+        this.updateBiometricSettingsUI();
+        this.showToast("Biometrics enabled successfully.");
+    } catch (e) {
+        console.error(e);
+        this.showToast("Biometric setup failed or cancelled.");
+    }
+  },
+
+  disableBiometric: function() {
+    localStorage.removeItem('biometric_cred_id');
+    localStorage.removeItem('biometric_key');
+    this.updateBiometricSettingsUI();
+    this.showToast("Biometrics disabled.");
+  },
+
+  handleBiometricAuth: async function() {
+    if (navigator.vibrate) navigator.vibrate(50);
+    try {
+        const credIdBase64 = localStorage.getItem('biometric_cred_id');
+        const obfuscatedKey = localStorage.getItem('biometric_key');
+        if (!credIdBase64 || !obfuscatedKey) throw new Error("Biometrics not configured");
+
+        const credId = Uint8Array.from(atob(credIdBase64), c => c.charCodeAt(0));
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+        const publicKey = {
+            challenge: challenge,
+            rpId: window.location.hostname || "localhost",
+            allowCredentials: [{ type: "public-key", id: credId }],
+            userVerification: "required",
+            timeout: 60000
+        };
+
+        await navigator.credentials.get({ publicKey });
+        
+        // Success! Decrypt the obfuscated key
+        const pass = atob(obfuscatedKey);
+        
+        const btn = document.getElementById('biometric-auth-btn');
+        const spinner = document.getElementById('auth-spinner');
+        btn.classList.add('hidden');
+        spinner.classList.remove('hidden');
+
+        const saltConfig = await db.get('settings', 'salt');
+        if (saltConfig) {
+            await crypt.unlock(pass, saltConfig.value.salt, saltConfig.value.hash);
+            this.state.derivedKeyPassphrase = pass;
+            await this.postUnlock();
+        } else {
+            throw new Error("Vault not initialized.");
+        }
+    } catch (e) {
+        console.error(e);
+        this.showError("Biometric auth failed.");
+        document.getElementById('biometric-auth-btn').classList.remove('hidden');
+        document.getElementById('auth-spinner').classList.add('hidden');
+    }
   },
   
   nav: function(screenId) {
@@ -148,6 +265,7 @@ const App = {
         if (saltConfig) {
             // Unlock
             await crypt.unlock(pass, saltConfig.value.salt, saltConfig.value.hash);
+            this.state.derivedKeyPassphrase = pass;
             await this.postUnlock();
         } else {
             // Setup
@@ -156,6 +274,7 @@ const App = {
             if (pass !== confirm) throw new Error("Passphrases do not match. Try again.");
             const config = await crypt.initialize(pass);
             await db.put('settings', { key: 'salt', value: config });
+            this.state.derivedKeyPassphrase = pass;
             await this.postUnlock();
         }
     } catch (e) {
@@ -335,11 +454,52 @@ const App = {
         return;
     }
     this.showModal("Send Now", "Are you sure you want to send this message manually right now?", async () => {
+        const rawText = document.createElement('div');
+        rawText.innerHTML = this.state.message.text || '';
+        const plainText = rawText.innerText || "A legacy message awaits you.";
+        
+        const filesToShare = [];
+        if (this.state.message.attachments && this.state.message.attachments.length > 0) {
+            this.showToast("Preparing attachments...");
+            for (let att of this.state.message.attachments) {
+                try {
+                    const stored = await db.get('attachments', att.id);
+                    if (stored) {
+                        const decryptedBuffer = await crypt.decryptFile(stored.data, att.iv);
+                        const blob = new Blob([decryptedBuffer], { type: att.type });
+                        const file = new File([blob], att.name, { type: att.type });
+                        filesToShare.push(file);
+                    }
+                } catch (e) {
+                    console.error("Failed to decrypt attachment", e);
+                }
+            }
+        }
+
+        // Try native share first (works great on Android for files + text)
+        if (navigator.share) {
+            const shareData = {
+                title: 'One Last Message',
+                text: plainText,
+            };
+            if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
+                shareData.files = filesToShare;
+            }
+            try {
+                await navigator.share(shareData);
+                this.showToast("Shared successfully!");
+                return;
+            } catch (e) {
+                console.log("Share API failed or cancelled", e);
+                // Fall through to EmailJS or mailto
+            }
+        }
+
         if (emailService.isInitialized) {
             try {
                 this.showToast("Sending emails...");
                 for (let r of this.state.message.recipients) {
-                    await emailService.sendEmail(r.email, r.name, "A legacy message awaits you.");
+                    await emailService.sendEmail(r.email, r.name, plainText);
                 }
                 this.showToast("Emails sent successfully!");
             } catch (e) {
@@ -348,7 +508,8 @@ const App = {
         } else {
             // Fallback to mailto
             const r = this.state.message.recipients[0];
-            window.location.href = `mailto:${r.email}?subject=One Last Message&body=Please check the legacy system.`;
+            const body = encodeURIComponent(plainText);
+            window.location.href = `mailto:${r.email}?subject=One Last Message&body=${body}`;
             this.showToast("Opening email client as fallback...");
         }
     });

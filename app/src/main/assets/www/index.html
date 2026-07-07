@@ -41,6 +41,7 @@
       </div>
       
       <button id="auth-btn" class="glass-btn primary">Initialize Vault</button>
+      <button id="biometric-auth-btn" class="glass-btn outline mt-4 hidden">Unlock with Biometrics 🛡️</button>
       <div id="auth-error" class="error-text"></div>
       <div id="auth-spinner" class="spinner hidden"></div>
     </div>
@@ -167,6 +168,13 @@
         </select>
       </div>
       
+      <div class="glass-panel" id="biometric-settings-panel">
+        <h3>Biometric Login</h3>
+        <p class="section-desc">Unlock your vault quickly using FaceID or Fingerprint.</p>
+        <button id="enable-biometric-btn" class="glass-btn outline w-full mb-2">Enable Biometrics</button>
+        <button id="disable-biometric-btn" class="glass-btn danger outline w-full hidden">Disable Biometrics</button>
+      </div>
+      
       <div class="glass-panel">
         <h3>Backup (.olm)</h3>
         <p class="section-desc">Export your fully encrypted vault for safekeeping.</p>
@@ -176,7 +184,10 @@
       </div>
       
       <div class="glass-panel danger-zone">
-        <h3>Danger Zone</h3>
+        <h3>Session</h3>
+        <button id="signout-btn" class="glass-btn outline w-full mb-2">Sign Out (Clear Session)</button>
+        
+        <h3 class="mt-4">Danger Zone</h3>
         <button id="factory-reset-btn" class="glass-btn danger w-full">Delete All Data</button>
       </div>
     </div>
