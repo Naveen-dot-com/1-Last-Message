@@ -1,0 +1,6 @@
+{
+  "name": "One Last Message",
+  "description": "A privacy-first, serverless digital legacy Progressive Web App (PWA).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
