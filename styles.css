@@ -81,6 +81,12 @@ body {
   pointer-events: none;
   background-image: radial-gradient(var(--dot-color) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
+  animation: floatDots 60s linear infinite;
+}
+
+@keyframes floatDots {
+  0% { background-position: 0px 0px; }
+  100% { background-position: 480px -480px; }
 }
 
 .screen {
