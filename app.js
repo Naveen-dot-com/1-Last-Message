@@ -57,6 +57,17 @@ const App = {
         ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)';
 
         this.state.particles.forEach(p => {
+            // Randomly wander
+            p.vx += (Math.random() - 0.5) * 0.05;
+            p.vy += (Math.random() - 0.5) * 0.05;
+            
+            // Limit max speed
+            const speed = Math.hypot(p.vx, p.vy);
+            if (speed > 0.8) {
+                p.vx = (p.vx / speed) * 0.8;
+                p.vy = (p.vy / speed) * 0.8;
+            }
+
             p.x += p.vx;
             p.y += p.vy;
 
