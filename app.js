@@ -533,6 +533,7 @@ const App = {
         const emails = this.state.message.recipients.map(r => r.email).join(',');
         
         const filesToShare = [];
+        const nativeFiles = [];
         if (this.state.message.attachments && this.state.message.attachments.length > 0) {
             this.showToast("Preparing attachments...");
             for (let att of this.state.message.attachments) {
@@ -543,11 +544,24 @@ const App = {
                         const blob = new Blob([decryptedBuffer], { type: att.type });
                         const file = new File([blob], att.name, { type: att.type });
                         filesToShare.push(file);
+                        
+                        let binary = '';
+                        const bytes = new Uint8Array(decryptedBuffer);
+                        for (let i = 0; i < bytes.byteLength; i++) {
+                            binary += String.fromCharCode(bytes[i]);
+                        }
+                        nativeFiles.push({ name: att.name, base64: window.btoa(binary) });
                     }
                 } catch (e) {
                     console.error("Failed to decrypt attachment", e);
                 }
             }
+        }
+
+        // Use native Android interface if available for perfect email intent formatting
+        if (window.AndroidApp && window.AndroidApp.shareEmail) {
+            window.AndroidApp.shareEmail(emails, "One Last Message", plainText, JSON.stringify(nativeFiles));
+            return;
         }
 
         // If emailJS is fully initialized and they have an active connection, prefer it for silent sending?
