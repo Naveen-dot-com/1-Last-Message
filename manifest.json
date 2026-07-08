@@ -1,6 +1,6 @@
 {
   "name": "One Last Message",
-  "short_name": "Legacy",
+  "short_name": "One Last Message",
   "description": "Privacy-first, serverless digital legacy.",
   "start_url": "./index.html",
   "display": "standalone",

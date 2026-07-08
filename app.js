@@ -520,7 +520,7 @@ const App = {
   },
 
   handleSend: async function() {
-    if (!this.state.message.recipients.length) {
+    if (!this.state.message.recipients || !this.state.message.recipients.length) {
         this.showToast("No recipients configured. Edit message first.");
         this.loadEditor();
         this.nav('screen-editor');
@@ -530,6 +530,7 @@ const App = {
         const rawText = document.createElement('div');
         rawText.innerHTML = this.state.message.text || '';
         const plainText = rawText.innerText || "A legacy message awaits you.";
+        const emails = this.state.message.recipients.map(r => r.email).join(',');
         
         const filesToShare = [];
         if (this.state.message.attachments && this.state.message.attachments.length > 0) {
@@ -549,11 +550,26 @@ const App = {
             }
         }
 
+        // If emailJS is fully initialized and they have an active connection, prefer it for silent sending?
+        // Wait, the user wants to use their native email client. EmailJS is for automated delivery (check-ins).
+        // Let's use mailto/share as the primary manual method.
+        
+        if (filesToShare.length === 0) {
+            // No attachments! We can perfectly use mailto: to open their email app seamlessly with ALL recipients.
+            const subject = encodeURIComponent("One Last Message");
+            const body = encodeURIComponent(plainText);
+            window.location.href = `mailto:${emails}?subject=${subject}&body=${body}`;
+            this.showToast("Opening your default email app...");
+            return;
+        }
+
         // Try native share first (works great on Android for files + text)
         if (navigator.share) {
+            // Append emails to the text so the user knows who to send it to, since Web Share API doesn't support 'to' field.
+            const textWithRecipients = `To: ${emails.replace(/,/g, ', ')}\n\n${plainText}`;
             const shareData = {
                 title: 'One Last Message',
-                text: plainText,
+                text: textWithRecipients,
             };
             if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
                 shareData.files = filesToShare;
@@ -564,10 +580,12 @@ const App = {
                 return;
             } catch (e) {
                 console.log("Share API failed or cancelled", e);
-                // Fall through to EmailJS or mailto
+                // User cancelled the share sheet, DO NOT pop up another app. Just return.
+                return;
             }
         }
-
+        
+        // If navigator.share doesn't exist (e.g. older browser) and we have attachments, fallback to EmailJS or mailto (without attachments).
         if (emailService.isInitialized) {
             try {
                 this.showToast("Sending emails...");
@@ -579,10 +597,10 @@ const App = {
                 this.showToast("Error: " + e.message);
             }
         } else {
-            // Fallback to mailto
-            const r = this.state.message.recipients[0];
+            // Ultimate fallback
+            const subject = encodeURIComponent("One Last Message");
             const body = encodeURIComponent(plainText);
-            window.location.href = `mailto:${r.email}?subject=One Last Message&body=${body}`;
+            window.location.href = `mailto:${emails}?subject=${subject}&body=${body}`;
             this.showToast("Opening email client as fallback...");
         }
     });
