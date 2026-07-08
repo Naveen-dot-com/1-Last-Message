@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olm-cache-v1';
+const CACHE_NAME = 'olm-cache-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,7 +8,7 @@ const ASSETS_TO_CACHE = [
   './db.js',
   './emailjs-config.js',
   './manifest.json',
-  'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js'
+  './email.min.js'
 ];
 
 self.addEventListener('install', (event) => {

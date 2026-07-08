@@ -565,16 +565,18 @@ const App = {
 
         // Try native share first (works great on Android for files + text)
         if (navigator.share) {
-            // Append emails to the text so the user knows who to send it to, since Web Share API doesn't support 'to' field.
-            const textWithRecipients = `To: ${emails.replace(/,/g, ', ')}\n\n${plainText}`;
             const shareData = {
                 title: 'One Last Message',
-                text: textWithRecipients,
+                text: plainText,
             };
             if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
                 shareData.files = filesToShare;
             }
             try {
+                // Copy emails to clipboard so they can paste it in the To field, since Web Share API doesn't support 'to'
+                try { await navigator.clipboard.writeText(emails); } catch(e) {}
+                this.showToast("Recipients copied to clipboard! Paste them in the 'To' field.");
+                
                 await navigator.share(shareData);
                 this.showToast("Shared successfully!");
                 return;
