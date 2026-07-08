@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Background to match dark theme -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050505"/>
+      <stop offset="100%" stop-color="#111118"/>
+    </linearGradient>
+
+    <!-- Glass gradients -->
+    <linearGradient id="glass" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.1)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.02)"/>
+    </linearGradient>
+
+    <!-- Inner Highlight -->
+    <radialGradient id="highlight" cx="30%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.8)"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+
+    <!-- Shadow & Inner Shadow Filters -->
+    <filter id="glass-effects" x="-30%" y="-30%" width="160%" height="160%">
+      <!-- Drop Shadow -->
+      <feDropShadow dx="0" dy="25" stdDeviation="25" flood-color="rgba(0,0,0,0.5)" flood-opacity="1" result="drop-shadow"/>
+      
+      <!-- Source Alpha -->
+      <feComponentTransfer in="SourceAlpha" result="alpha"/>
+      
+      <!-- Inner Shadow 1 (Light Top Left) -->
+      <feGaussianBlur in="alpha" stdDeviation="20" result="blur-inner-1"/>
+      <feOffset dx="20" dy="20" result="offset-inner-1"/>
+      <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadow-diff-1"/>
+      <feFlood flood-color="rgba(255,255,255,0.4)" flood-opacity="1"/>
+      <feComposite in2="shadow-diff-1" operator="in"/>
+      <feComposite in2="drop-shadow" operator="over" result="with-inner-1"/>
+      
+      <!-- Inner Shadow 2 (Dark Bottom Right) -->
+      <feOffset dx="-20" dy="-20" in="blur-inner-1" result="offset-inner-2"/>
+      <feComposite in2="alpha" in="offset-inner-2" operator="arithmetic" k2="-1" k3="1" result="shadow-diff-2"/>
+      <feFlood flood-color="rgba(0,0,0,0.6)" flood-opacity="1"/>
+      <feComposite in2="shadow-diff-2" operator="in"/>
+      <feComposite in2="with-inner-1" operator="over" result="with-inner-2"/>
+
+      <!-- Render Graphic over shadows -->
+      <feMerge>
+        <feMergeNode in="with-inner-2"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="blur-highlight">
+      <feGaussianBlur stdDeviation="15"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Liquid Blob Shape -->
+  <g filter="url(#glass-effects)">
+    <path d="M370.4,147.2c56.8,45.4,85.2,119.3,77.3,186.4c-7.9,67.1-52,127.3-112.5,152.1c-60.5,24.8-137.4,14.3-195.4-23.7C81.9,424.1,43.1,358.9,45,291.6C46.9,224.2,89.5,154.8,145.4,106C201.3,57.1,270.6,28.8,326,45.8C381.4,62.8,422.9,125.1,370.4,147.2z" fill="url(#glass)"/>
+  </g>
+
+  <!-- Border -->
+  <path d="M370.4,147.2c56.8,45.4,85.2,119.3,77.3,186.4c-7.9,67.1-52,127.3-112.5,152.1c-60.5,24.8-137.4,14.3-195.4-23.7C81.9,424.1,43.1,358.9,45,291.6C46.9,224.2,89.5,154.8,145.4,106C201.3,57.1,270.6,28.8,326,45.8C381.4,62.8,422.9,125.1,370.4,147.2z" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+
+  <!-- Top-left glowing reflection -->
+  <path d="M190,140C240,110 290,130 310,160C330,190 320,240 270,270C220,300 170,280 150,250C130,220 140,170 190,140Z" fill="url(#highlight)" filter="url(#blur-highlight)"/>
+
+</svg>

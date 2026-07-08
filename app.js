@@ -10,6 +10,7 @@ const App = {
     await emailService.loadConfig(db);
     this.bindEvents();
     this.applyTheme();
+    this.initParticles();
     
     // Service Worker is disabled in Android WebView to prevent Chromium cache backend errors
     // as WebViewAssetLoader already serves files locally.
@@ -27,6 +28,51 @@ const App = {
       document.getElementById('passphrase-confirm-group').classList.add('hidden');
       document.getElementById('auth-btn').innerText = "Unlock";
     }
+  },
+
+  initParticles: function() {
+    const canvas = document.getElementById('particles-bg');
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext('2d');
+    
+    const resize = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Create dot particles
+    this.state.particles = Array.from({ length: 60 }).map(() => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4
+    }));
+
+    const animate = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const isDark = document.body.classList.contains('theme-dark');
+        ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)';
+
+        this.state.particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.x < 0) p.x = canvas.width;
+            if (p.x > canvas.width) p.x = 0;
+            if (p.y < 0) p.y = canvas.height;
+            if (p.y > canvas.height) p.y = 0;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        requestAnimationFrame(animate);
+    };
+    animate();
   },
 
   bindEvents: function() {
@@ -88,6 +134,9 @@ const App = {
     document.getElementById('signout-btn').addEventListener('click', doSignOut);
     document.getElementById('dashboard-signout-btn').addEventListener('click', doSignOut);
     document.getElementById('factory-reset-btn').addEventListener('click', () => this.showModal("Factory Reset", "This will delete all encrypted data locally. Proceed?", () => this.factoryReset()));
+    document.getElementById('export-backup-btn').addEventListener('click', () => this.exportBackup());
+    document.getElementById('import-backup-btn').addEventListener('click', () => document.getElementById('import-file').click());
+    document.getElementById('import-file').addEventListener('change', (e) => this.importBackup(e.target.files[0]));
     
     // Check-in
     document.getElementById('checkin-btn').addEventListener('click', () => this.handleCheckIn());
@@ -199,6 +248,15 @@ const App = {
   nav: function(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
+    
+    const dots = document.getElementById('particles-bg');
+    if (dots) {
+        if (screenId === 'screen-editor' || screenId === 'screen-settings' || screenId === 'screen-dashboard') {
+            dots.style.display = 'none';
+        } else {
+            dots.style.display = 'block';
+        }
+    }
   },
 
   showToast: function(msg) {
@@ -540,6 +598,63 @@ const App = {
   factoryReset: async function() {
     await db.clearAll();
     window.location.reload();
+  },
+
+  exportBackup: async function() {
+    try {
+      const vault = await db.getAll('vault');
+      const attachments = await db.getAll('attachments');
+      const settings = await db.getAll('settings');
+      
+      const backupData = {
+        version: 1,
+        timestamp: new Date().toISOString(),
+        vault,
+        attachments,
+        settings
+      };
+      
+      const blob = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `olm_backup_${new Date().toISOString().split('T')[0]}.olm`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+      
+      this.showToast("Backup exported successfully");
+    } catch (e) {
+      console.error(e);
+      this.showToast("Export failed");
+    }
+  },
+
+  importBackup: async function(file) {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.vault || !data.attachments || !data.settings) {
+        throw new Error("Invalid backup format");
+      }
+      
+      await db.clearAll();
+      
+      for (const item of data.vault) await db.put('vault', item);
+      for (const item of data.attachments) await db.put('attachments', item);
+      for (const item of data.settings) await db.put('settings', item);
+      
+      this.showToast("Backup imported successfully. Reloading...");
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+      console.error(e);
+      this.showToast("Import failed: " + e.message);
+    }
+    document.getElementById('import-file').value = '';
   }
 };
 
